@@ -269,7 +269,9 @@ static int mp_covar(int n, FLT *r, int ldr, int *ipvt, FLT tol, FLT *wa);
  *     burton s. garbow, kenneth e. hillstrom, jorge j. more
  *
  * ********** */
-
+/*
+ * mp_func is definged in survive_optimizer.c
+ */
 int mpfit(mp_func funct, int m, int npar, FLT *xall, mp_par *pars, mp_config *config, void *private_data,
 		  mp_result *result) {
 	mp_config conf;

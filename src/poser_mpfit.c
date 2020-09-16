@@ -89,6 +89,8 @@ typedef struct MPFITData {
   struct survive_async_optimizer *async_optimizer;
 } MPFITData;
 
+SurviveSensorActivations last_scene;
+
 static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t meas_size, int lh) {
 	size_t rtn = meas_size;
 	for (int i = 0; i < rtn; i++) {
@@ -103,6 +105,7 @@ static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t me
 static size_t construct_input_from_scene(const MPFITData *d, survive_long_timecode timecode,
 										 const SurviveSensorActivations *scene, size_t *meas_for_lhs,
 										 survive_optimizer_measurement *meas, survive_long_timecode *most_recent_time) {
+	/**/
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
 	SurviveContext *ctx = so->ctx;
@@ -369,6 +372,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const mp_result *result,
 									struct async_optimizer_user *user_data, SurvivePose *out) {
+	/*type(optimizer) = type(mpfitctx) = survive_optimizer*/
 	FLT rtn = -1;
 
 	size_t meas_size = mpfitctx->measurementsCnt;
@@ -510,6 +514,9 @@ static void run_mpfit_find_3d_structure_async(MPFITData *d, PoserDataLight *pdl,
 
 static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
 									   SurvivePose *out) {
+
+
+
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
 
@@ -533,8 +540,11 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	survive_release_ctx_lock(ctx);
 	int res = survive_optimizer_run(&mpfitctx, &result);
 	survive_get_ctx_lock(ctx);
-
+	last_scene = *scene;
 	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, out);
+
+
+
 }
 
 static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {

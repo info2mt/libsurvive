@@ -183,11 +183,14 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 		return (SurvivePose *)ctx->parameters;
 	return &ctx->initialPose;
 }
+
 static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
 										const survive_reproject_model_t *reprojectModel,
 										const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
 										const LinmathAxisAnglePose *obj2lh, const LinmathAxisAnglePose *world2lh,
 										FLT *deviates, FLT **derivs) {
+	/* Double sweep (2 angles) measurement of 1 LH station
+	 * TODO: this function does not seem to be checking for the time difference between the sensor readings*/
 	const int lh = meas->lh;
 	const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx, meas->object);
 	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
@@ -249,11 +252,13 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 		}
 	}
 }
+
 static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
 								   const survive_reproject_model_t *reprojectModel,
 								   const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
 								   const LinmathAxisAnglePose *obj2lh, const LinmathAxisAnglePose *world2lh,
 								   FLT *deviates, FLT **derivs) {
+	/* Single sweep (1 angle) measurement of 1 LH station */
 	SurviveContext *ctx = mpfunc_ctx->sos[0]->ctx;
 	const int lh = meas->lh;
 	const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx, meas->object);
@@ -261,8 +266,9 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 	const FLT *pt = &sensor_points[meas->sensor_idx * 3];
 
 	LinmathPoint3d sensorPtInLH;
+	/*Transform position of sensor from tracker to lighthouse frame*/
 	ApplyAxisAnglePoseToPoint(sensorPtInLH, obj2lh, pt);
-
+	/*Deviation of estimate from measurement*/
 	FLT out = reprojectModel->reprojectAxisFn[meas->axis](cal, sensorPtInLH);
 	deviates[0] = (out - meas->value) / meas->variance;
 	assert(isfinite(deviates[0]));
@@ -377,7 +383,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 	const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
 	mpfunc_ctx->parameters = p;
-
+	/*TODO: Why is this different from calibration data???*/
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfunc_ctx);
 
 	int start = survive_optimizer_get_camera_index(mpfunc_ctx);
@@ -437,12 +443,19 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			int lh_count = mpfunc_ctx->cameraLength > 0 ? mpfunc_ctx->cameraLength
 														: mpfunc_ctx->sos[pose_idx]->ctx->activeLighthouses;
 			for (int lh = 0; lh < lh_count; lh++) {
+				/*
+				 * This function SETS obj2lh !!!
+				 */
 				ApplyAxisAnglePoseToPose(&obj2lh[lh], (const LinmathAxisAnglePose *)&cameras[lh], pose);
 			}
 		}
 
 		// If the next two measurements are joined; handle the full pair. This lets us just calculate
 		// sensorPtInLH once
+
+		/*Apparently, measurements are being joined when two consecutive measurements represent two sweeps of the
+		 * same lighthouse on the same sensor
+		 * TODO: maybe interpolate and only handle pairs?*/
 		const bool nextIsPair = i + 1 < m && meas[0].axis == 0 && meas[1].axis == 1 &&
 								meas[0].sensor_idx == meas[1].sensor_idx && !meas[1].invalid;
 
@@ -530,7 +543,7 @@ SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_c
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
-
+/*type(optimizer) = type(mpfitctx) = survive_optimizer*/
 	mp_config *cfg = optimizer->cfg;
 	if (cfg == 0)
 		cfg = survive_optimizer_get_cfg(ctx);

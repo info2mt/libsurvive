@@ -866,7 +866,7 @@ function init() {
 	// Function called when download errors
 	var onError = function(error) { console.log('An error happened' + error); };
 
-	for (var z = 0; z < 5; z++) {
+	/*for (var z = 0; z < 5; z++) {
 		for (var i = -4; i < 5; i++) {
 			for (var j = 0; j < 5; j++) {
 				var size = .1;
@@ -907,7 +907,7 @@ function init() {
 				scene.add(cube);
 			}
 		}
-	}
+	}*/
 
 	//////////////
 	// RENDERER //
@@ -972,7 +972,7 @@ function init() {
 	}
 
 	var loader = new THREE.TextureLoader();
-	loader.load('https://i.imgur.com/zUrlBcp.jpg', // 'https://i.imgur.com/7lmxb0b.jpg',
+	loader.load('https://upload.wikimedia.org/wikipedia/commons/c/cd/Black_from_a_camera.jpg', // 'https://i.imgur.com/7lmxb0b.jpg',
 				onLoad, onProgress, onError);
 
 	var axes = new THREE.AxesHelper(5);
